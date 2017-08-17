@@ -3,6 +3,8 @@ import BaseStore from 'ghost-storage-base'
 import { join } from 'path'
 import Promise, { promisify } from 'bluebird'
 import { readFile } from 'fs'
+import md5File from 'md5-file'
+import path from 'path'
 
 const readFileAsync = promisify(readFile)
 
@@ -80,7 +82,8 @@ class Store extends BaseStore {
 
   save (image, targetDir) {
     const directory = targetDir || this.getTargetDir(this.pathPrefix)
-
+    const filehash = md5File.sync(image.path);
+    const extension = path.extname(image.name);
     return new Promise((resolve, reject) => {
       Promise.all([
         this.getUniqueFileName(image, directory),
@@ -93,10 +96,10 @@ class Store extends BaseStore {
             Bucket: this.bucket,
             CacheControl: `max-age=${30 * 24 * 60 * 60}`,
             ContentType: image.type,
-            Key: stripLeadingSlash(fileName)
+            Key: stripLeadingSlash(fileName).split(extension)[0] + '-' + filehash + extension
           })
           .promise()
-          .then(() => resolve(`${this.host}/${fileName}`))
+          .then(() => resolve(`${this.host}/${fileName.split(extension)[0] + '-' + filehash + extension}`))
       )).catch(error => reject(error))
     })
   }
